@@ -1,0 +1,24 @@
+{
+  "name": "itmpws",
+  "version": "1.0.0",
+  "description": "itmp client for websocket in browser",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/neolp/itmpws.git"
+  },
+  "keywords": [
+    "itmp",
+    "iot",
+    "ws"
+  ],
+  "author": "Alexei Tsigulin",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/neolp/itmpws/issues"
+  },
+  "homepage": "https://github.com/neolp/itmpws#readme"
+}

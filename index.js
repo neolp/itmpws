@@ -19,7 +19,7 @@ function ITMP(settings) {
     binaryType: null,
     autoReconnect: false,
     reconnectTimeout: 3000,
-    reconnectMaxCount: 5,
+    reconnectMaxCount: 0,
     onOpen: function () { },
     onClose: function () { },
     onError: function () { },
@@ -52,17 +52,16 @@ ITMP.prototype.connect = function () {
   this._ws.onerror = this._onError.bind(this);
 };
 
-ITMP.prototype.call = function (s) {
-  var topic = s.topic,
-    payload = s.payload,
-    onSuccess = s.onSuccess,
-    onError = s.onError;
+ITMP.prototype.call = function (topic, args) {
+  return new Promise((resolve, reject) => {
+    var reqId = this._getReqId();
+    this._calls[reqId] = { onSuccess: resolve, onError: reject };
+    this._send([COMMAND.CALL, reqId, topic, args]);
+  })
 
-  var reqId = this._getReqId();
-  this._calls[reqId] = { onSuccess: onSuccess, onError: onError };
-  this._send([COMMAND.CALL, reqId, topic, payload]);
 };
 
+// подписка на топик, onEvent может быть undefined или даже null, или быть опущеным но тогда подписка произойдет но call back вызван не будет
 ITMP.prototype.subscribe = function (topic, onEvent) {
   return new Promise((resolve, reject) => {
 
@@ -75,7 +74,8 @@ ITMP.prototype.subscribe = function (topic, onEvent) {
       return
     }
 
-    // Подписка уже есть, просто отправим call
+    // Подписка уже есть
+    // просто отправим call ?
     // this.call(s);
     if (this._subs[topic].has(onEvent)) {
       this._subs[topic].get(onEvent).count += 1;
@@ -85,7 +85,7 @@ ITMP.prototype.subscribe = function (topic, onEvent) {
   })
 };
 
-ITMP.prototype._resubscribe = function () {
+ITMP.prototype._resubscribeAll = function () {
   for (var topic in this._subs) {
     var reqId = this._getReqId();
     this._calls[reqId] = { onSuccess: () => { }, onError: () => { } };
@@ -93,6 +93,7 @@ ITMP.prototype._resubscribe = function () {
   }
 };
 
+// отписка от топика, onEvent может быть undefined или даже null, или быть опущеным, главное чтобы также как и при вызове subscribe
 ITMP.prototype.unsubscribe = function (topic, onEvent) {
   return new Promise((resolve, reject) => {
     if (this._subs[topic] && this._subs[topic].has(onEvent)) {
@@ -119,7 +120,7 @@ ITMP.prototype._onOpen = function (evt) {
   this._send(); // отправиль все сообщения из очереди
 
   if (this.reconnectCount) {
-    this._resubscribe();
+    this._resubscribeAll();
     this.reconnectCount = 0;
   }
 
@@ -130,7 +131,7 @@ ITMP.prototype._onClose = function (evt) {
   this.settings.onClose(evt);
   this.state = this._ws.readyState;
   this._ws = null;
-  if (this.settings.autoReconnect && this.reconnectCount < this.settings.reconnectMaxCount) {
+  if (this.settings.autoReconnect && (!this.settings.reconnectMaxCount || this.reconnectCount < this.settings.reconnectMaxCount)) {
     //TODO if force close
     setTimeout(this._onReconnect.bind(this), this.settings.reconnectTimeout);
   }
