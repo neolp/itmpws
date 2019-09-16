@@ -62,6 +62,11 @@ class ITMP {
 
   };
 
+  emit(topic, args) {
+    var reqId = this._getReqId();
+    this._send([COMMAND.EVENT, reqId, topic, args]);
+  };
+
   // подписка на топик, onEvent может быть undefined или даже null, или быть опущеным но тогда подписка произойдет но call back вызван не будет
   subscribe(topic, onEvent) {
     return new Promise((resolve, reject) => {
