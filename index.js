@@ -68,7 +68,7 @@ class ITMP {
   };
 
   // подписка на топик, onEvent может быть undefined или даже null, или быть опущеным но тогда подписка произойдет но call back вызван не будет
-  subscribe(topic, onEvent) {
+  subscribe(topic, onEvent, opts) {
     return new Promise((resolve, reject) => {
 
       if (this._subs[topic] === undefined) {
@@ -76,7 +76,7 @@ class ITMP {
         this._subs[topic] = new Map()
         this._subs[topic].set(onEvent, { onEvent, count: 1 })
         this._calls[reqId] = { onSuccess: resolve, onError: reject };
-        this._send([COMMAND.SUBSCRIBE, reqId, topic]);
+        this._send([COMMAND.SUBSCRIBE, reqId, topic, opts]);
         return
       }
 
@@ -91,7 +91,7 @@ class ITMP {
     })
   };
 
-  subscribeOnce(topic, onEvent) {
+  subscribeOnce(topic, onEvent, opts) {
     return new Promise((resolve, reject) => {
 
       if (this._subs[topic] === undefined) {
@@ -99,7 +99,7 @@ class ITMP {
         this._subs[topic] = new Map()
         this._subs[topic].set(null, { onEvent, count: 1 })
         this._calls[reqId] = { onSuccess: resolve, onError: reject };
-        this._send([COMMAND.SUBSCRIBE, reqId, topic]);
+        this._send([COMMAND.SUBSCRIBE, reqId, topic, opts]);
         return
       }
 
