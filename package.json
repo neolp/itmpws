@@ -1,6 +1,6 @@
 {
   "name": "itmpws",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "itmp client for websocket in browser",
   "main": "index.js",
   "scripts": {
