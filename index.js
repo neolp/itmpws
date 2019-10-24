@@ -9,6 +9,8 @@ var COMMAND = {
   CALL: 8,
   RESULT: 9,
   EVENT: 13,
+  PUBLISH: 14,
+  PUBLISHED: 15,
   SUBSCRIBE: 16,
   UNSUBSCRIBE: 18
 };
@@ -73,8 +75,9 @@ class ITMP {
 
       if (this._subs[topic] === undefined) {
         var reqId = this._getReqId();
-        this._subs[topic] = new Map()
-        this._subs[topic].set(onEvent, { onEvent, count: 1 })
+        this._subs[topic] = { opts, onEvents: new Map([[onEvent, { count: 1 }]]) }
+        //        this._subs[topic] = new Map()
+        //        this._subs[topic].set(onEvent, { onEvent, opts, count: 1 })
         this._calls[reqId] = { onSuccess: resolve, onError: reject };
         this._send([COMMAND.SUBSCRIBE, reqId, topic, opts]);
         return
@@ -83,10 +86,10 @@ class ITMP {
       // Подписка уже есть
       // просто отправим call ?
       // this.call(s);
-      if (this._subs[topic].has(onEvent)) {
-        this._subs[topic].get(onEvent).count += 1;
+      if (this._subs[topic].onEvents.has(onEvent)) {
+        this._subs[topic].onEvents.get(onEvent).count += 1;
       } else {
-        this._subs[topic].set(onEvent, { onEvent, count: 1 });
+        this._subs[topic].onEvents.set(onEvent, { count: 1 });
       }
     })
   };
@@ -96,8 +99,9 @@ class ITMP {
 
       if (this._subs[topic] === undefined) {
         var reqId = this._getReqId();
-        this._subs[topic] = new Map()
-        this._subs[topic].set(null, { onEvent, count: 1 })
+        this._subs[topic] = { opts, onEvents: new Map([[onEvent, { count: 1 }]]) }
+        //this._subs[topic] = new Map()
+        //this._subs[topic].set(null, { onEvent, opts, count: 1 })
         this._calls[reqId] = { onSuccess: resolve, onError: reject };
         this._send([COMMAND.SUBSCRIBE, reqId, topic, opts]);
         return
@@ -106,10 +110,10 @@ class ITMP {
       // Подписка уже есть
       // просто отправим call ?
       // this.call(s);
-      if (this._subs[topic].has(null)) {
-        this._subs[topic].get(null).count += 1;
+      if (this._subs[topic].onEvents.has(null)) {
+        this._subs[topic].onEvents.get(null).count += 1;
       } else {
-        this._subs[topic].set(null, { onEvent, count: 1 });
+        this._subs[topic].onEvents.set(null, { count: 1 });
       }
     })
   };
@@ -118,22 +122,21 @@ class ITMP {
     for (var topic in this._subs) {
       var reqId = this._getReqId();
       this._calls[reqId] = { onSuccess: () => { }, onError: () => { } };
-      this._send([COMMAND.SUBSCRIBE, reqId, topic]);
+      this._send([COMMAND.SUBSCRIBE, reqId, topic, this._subs[topic].opts]);
     }
   };
 
   // отписка от топика, onEvent может быть undefined или даже null, или быть опущеным, главное чтобы также как и при вызове subscribe
   unsubscribe(topic, onEvent) {
     return new Promise((resolve, reject) => {
-      if (this._subs[topic] && this._subs[topic].has(onEvent)) {
-        this._subs[topic].get(onEvent).count -= 1;
+      if (this._subs[topic] && this._subs[topic].onEvents.has(onEvent)) {
+        this._subs[topic].onEvents.get(onEvent).count -= 1;
 
-        if (this._subs[topic].get(onEvent).count === 0) {
-          this._subs[topic].delete(onEvent);
+        if (this._subs[topic].onEvents.get(onEvent).count === 0) {
+          this._subs[topic].onEvents.delete(onEvent);
 
-          if (this._subs[topic].size === 0) {
+          if (this._subs[topic].onEvents.size === 0) {
             delete this._subs[topic];
-
             var reqId = this._getReqId();
             this._calls[reqId] = { onSuccess: resolve, onError: reject };
             this._send([COMMAND.UNSUBSCRIBE, reqId, topic]);
@@ -145,11 +148,11 @@ class ITMP {
 
   unsubscribeOnce(topic) {
     return new Promise((resolve, reject) => {
-      if (this._subs[topic] && this._subs[topic].has(null)) {
-        this._subs[topic].get(null).count -= 1;
+      if (this._subs[topic] && this._subs[topic].onEvents.has(null)) {
+        this._subs[topic].onEvents.get(null).count -= 1;
 
-        if (this._subs[topic].get(null).count === 0) {
-          this._subs[topic].delete(null);
+        if (this._subs[topic].onEvents.get(null).count === 0) {
+          this._subs[topic].onEvents.delete(null);
 
           if (this._subs[topic].size === 0) {
             delete this._subs[topic];
@@ -203,11 +206,20 @@ class ITMP {
       delete this._calls[reqId];
       return;
     }
+    if (code === COMMAND.PUBLISH) {
+      if (this._subs[topic]) {
+        this._subs[topic].onEvents.forEach(function (c, f) {
+          f && f(topic, payload);
+        });
+      }
+      this._send([COMMAND.PUBLISHED, reqId])
+      return;
+    }
 
     if (code === COMMAND.EVENT) {
       if (this._subs[topic]) {
-        this._subs[topic].forEach(function (c) {
-          c && c.onEvent && c.onEvent(topic, payload);
+        this._subs[topic].onEvents.forEach(function (c, f) {
+          f && f(topic, payload);
         });
       }
     } else {
