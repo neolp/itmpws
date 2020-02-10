@@ -3,7 +3,7 @@
 
 var CBOR = require('./cbor')
 var COMMAND = {
-  CONNECT: 0,
+  LOGIN: 0,
   CONNECTED: 1,
   ERROR: 5,
   CALL: 8,
@@ -60,6 +60,15 @@ class ITMP {
       var reqId = this._getReqId();
       this._calls[reqId] = { onSuccess: resolve, onError: reject };
       this._send([COMMAND.CALL, reqId, topic, args]);
+    })
+
+  };
+
+  _login(topic, args) {
+    return new Promise((resolve, reject) => {
+      var reqId = this._getReqId();
+      this._calls[reqId] = { onSuccess: resolve, onError: reject };
+      this._send([COMMAND.LOGIN, reqId, 'client', { token: 'token' }]);
     })
 
   };
@@ -169,6 +178,7 @@ class ITMP {
   _onOpen(evt) {
     console.log("ws open");
     this.state = this._ws.readyState;
+    this._login()
     this._send(); // отправиль все сообщения из очереди
 
     if (this.reconnectCount) {
