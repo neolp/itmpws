@@ -48,7 +48,7 @@ class ITMP {
       this._ws.binaryType = this.settings.binaryType;
     }
     // TODO
-    this.state = this._ws.readyState;
+    this.state = WebSocket.CLOSED //this._ws.readyState;
     this._ws.onopen = this._onOpen.bind(this);
     this._ws.onclose = this._onClose.bind(this);
     this._ws.onmessage = this._onMessage.bind(this);
@@ -68,7 +68,7 @@ class ITMP {
     return new Promise((resolve, reject) => {
       var reqId = this._getReqId();
       this._calls[reqId] = { onSuccess: resolve, onError: reject };
-      this._send([COMMAND.LOGIN, reqId, 'client', { token: 'token' }]);
+      this._sendnow([COMMAND.LOGIN, reqId, 'client', { token: 'token' }]);
     })
 
   };
@@ -175,10 +175,11 @@ class ITMP {
     })
   };
 
-  _onOpen(evt) {
+  async _onOpen(evt) {
     console.log("ws open");
     this.state = this._ws.readyState;
-    this._login()
+    await this._login()
+    console.log("itmp login");
     this._send(); // отправиль все сообщения из очереди
 
     if (this.reconnectCount) {
@@ -264,6 +265,11 @@ class ITMP {
     }
   };
 
+  _sendnow(message) {
+    if (this._ws && this._ws.readyState === WebSocket.OPEN) {
+      this._ws.send(this._serialize(message));
+    }
+  };
 
 
 
