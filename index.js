@@ -84,7 +84,7 @@ class ITMP {
 
       if (this._subs[topic] === undefined) {
         var reqId = this._getReqId();
-        this._subs[topic] = { opts, onEvents: new Map([[onEvent, { count: 1 }]]) }
+        this._subs[topic] = { opts, onEvents: new Map([[onEvent, { onEvent, count: 1 }]]) }
         //        this._subs[topic] = new Map()
         //        this._subs[topic].set(onEvent, { onEvent, opts, count: 1 })
         this._calls[reqId] = { onSuccess: resolve, onError: reject };
@@ -98,7 +98,7 @@ class ITMP {
       if (this._subs[topic].onEvents.has(onEvent)) {
         this._subs[topic].onEvents.get(onEvent).count += 1;
       } else {
-        this._subs[topic].onEvents.set(onEvent, { count: 1 });
+        this._subs[topic].onEvents.set(onEvent, { onEvent, count: 1 });
       }
     })
   };
@@ -108,7 +108,7 @@ class ITMP {
 
       if (this._subs[topic] === undefined) {
         var reqId = this._getReqId();
-        this._subs[topic] = { opts, onEvents: new Map([[onEvent, { count: 1 }]]) }
+        this._subs[topic] = { opts, onEvents: new Map([[null, { onEvent, count: 1 }]]) }
         //this._subs[topic] = new Map()
         //this._subs[topic].set(null, { onEvent, opts, count: 1 })
         this._calls[reqId] = { onSuccess: resolve, onError: reject };
@@ -122,7 +122,7 @@ class ITMP {
       if (this._subs[topic].onEvents.has(null)) {
         this._subs[topic].onEvents.get(null).count += 1;
       } else {
-        this._subs[topic].onEvents.set(null, { count: 1 });
+        this._subs[topic].onEvents.set(null, { onEvent, count: 1 });
       }
     })
   };
@@ -163,7 +163,7 @@ class ITMP {
         if (this._subs[topic].onEvents.get(null).count === 0) {
           this._subs[topic].onEvents.delete(null);
 
-          if (this._subs[topic].size === 0) {
+          if (this._subs[topic].onEvents.size === 0) {
             delete this._subs[topic];
 
             var reqId = this._getReqId();
@@ -191,8 +191,9 @@ class ITMP {
   };
 
   _onClose(evt) {
-    this.settings.onClose(evt);
+    //console.log("ws close");
     this.state = this._ws.readyState;
+    this.settings.onClose(evt);
     this._ws = null;
     if (this.settings.autoReconnect && (!this.settings.reconnectMaxCount || this.reconnectCount < this.settings.reconnectMaxCount)) {
       //TODO if force close
@@ -220,7 +221,7 @@ class ITMP {
     if (code === COMMAND.PUBLISH) {
       if (this._subs[topic]) {
         this._subs[topic].onEvents.forEach(function (c, f) {
-          f && f(topic, payload);
+          c && c.onEvent(topic, payload);
         });
       }
       this._send([COMMAND.PUBLISHED, reqId])
@@ -230,7 +231,7 @@ class ITMP {
     if (code === COMMAND.EVENT) {
       if (this._subs[topic]) {
         this._subs[topic].onEvents.forEach(function (c, f) {
-          f && f(topic, payload);
+          c && c.onEvent(topic, payload);
         });
       }
     } else {
@@ -240,6 +241,7 @@ class ITMP {
   };
 
   _onError(evt) {
+    console.log("ws error");
     this.settings.onError(evt);
   };
 
