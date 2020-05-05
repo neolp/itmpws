@@ -211,7 +211,9 @@ class ITMP {
     var code = msg[0],
       reqId = msg[1],
       topic = msg[2],
-      payload = msg[3];
+      payload = msg[3],
+      opts = msg[4];
+
 
     if (code === COMMAND.ERROR) {
       this._calls[reqId] && this._calls[reqId].onError && this._calls[reqId].onError(payload);
@@ -221,7 +223,7 @@ class ITMP {
     if (code === COMMAND.PUBLISH) {
       if (this._subs[topic]) {
         this._subs[topic].onEvents.forEach(function (c, f) {
-          c && c.onEvent(topic, payload);
+          c && c.onEvent(topic, payload, opts);
         });
       }
       this._send([COMMAND.PUBLISHED, reqId])
@@ -231,11 +233,11 @@ class ITMP {
     if (code === COMMAND.EVENT) {
       if (this._subs[topic]) {
         this._subs[topic].onEvents.forEach(function (c, f) {
-          c && c.onEvent(topic, payload);
+          c && c.onEvent(topic, payload, opts);
         });
       }
     } else {
-      this._calls[reqId] && this._calls[reqId].onSuccess && this._calls[reqId].onSuccess(topic, payload); // it is answer and "payload" ocupied "topic" place
+      this._calls[reqId] && this._calls[reqId].onSuccess && this._calls[reqId].onSuccess(topic, payload, opts); // it is answer and "payload" ocupied "topic" place
       delete this._calls[reqId];
     }
   };
