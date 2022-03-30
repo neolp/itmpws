@@ -19,6 +19,7 @@ class ITMP {
   constructor(settings) {
     var defaultSettings = {
       uri: "ws://" + window.location.host + "/ws/",
+      token: 'token',
       binaryType: null,
       autoReconnect: false,
       reconnectTimeout: 3000,
@@ -44,10 +45,8 @@ class ITMP {
 
   connect() {
     this._ws = new WebSocket(this.settings.uri);
-    if (this.settings.binaryType) {
-      this._ws.binaryType = this.settings.binaryType;
-    }
-    // TODO
+    this._ws.binaryType = 'arraybuffer';
+  // TODO
     this.state = WebSocket.CLOSED //this._ws.readyState;
     this._ws.onopen = this._onOpen.bind(this);
     this._ws.onclose = this._onClose.bind(this);
@@ -68,7 +67,7 @@ class ITMP {
     return new Promise((resolve, reject) => {
       var reqId = this._getReqId();
       this._calls[reqId] = { onSuccess: resolve, onError: reject };
-      this._sendnow([COMMAND.LOGIN, reqId, 'client', { token: 'token' }]);
+      this._sendnow([COMMAND.LOGIN, reqId, 'client', { token: this.settings.token }]);
     })
 
   };
@@ -89,7 +88,7 @@ class ITMP {
         //        this._subs[topic].set(onEvent, { onEvent, opts, count: 1 })
         this._calls[reqId] = { onSuccess: resolve, onError: reject };
         this._send([COMMAND.SUBSCRIBE, reqId, topic, opts]);
-        return
+        return onEvent
       }
 
       // Подписка уже есть
@@ -100,6 +99,7 @@ class ITMP {
       } else {
         this._subs[topic].onEvents.set(onEvent, { onEvent, count: 1 });
       }
+      return onEvent
     })
   };
 
@@ -289,10 +289,10 @@ class ITMP {
   };
 
   _unserialize(msg) {
-    if (this.settings.binaryType) {
-      return CBOR.decode(msg);
+    if (typeof msg === 'string') {
+      return JSON.parse(msg);
     }
-    return JSON.parse(msg);
+    return CBOR.decode(msg);
   };
 }
 export default ITMP
